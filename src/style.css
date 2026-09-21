@@ -1,0 +1,73 @@
+:root {
+  color-scheme: dark;
+  --bg-1: #050b12;
+  --bg-2: #101a25;
+  --panel-bg: rgba(8, 15, 22, 0.8);
+  --panel-border: rgba(120, 190, 255, 0.4);
+  --text: #eaf6ff;
+  --accent: #7ce7ff;
+  --accent-2: #7affc8;
+  --warning: #ffd166;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  height: 100%;
+  background: radial-gradient(circle at top, var(--bg-2), var(--bg-1) 60%);
+  color: var(--text);
+  font-family: Inter, "Segoe UI", sans-serif;
+}
+
+body {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+#game-canvas {
+  display: block;
+  width: min(90vw, 960px);
+  height: auto;
+  border: 1px solid rgba(124, 231, 255, 0.5);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(12, 20, 31, 0.85), rgba(4, 11, 17, 0.98));
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 25px rgba(124, 231, 255, 0.15);
+}
+
+#hud {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 150px;
+  padding: 10px 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+.hud-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: rgba(234, 246, 255, 0.78);
+}
+
+.hud-row strong {
+  color: var(--accent);
+  font-weight: 700;
+}

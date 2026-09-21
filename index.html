@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Game Lab 01</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas
+      id="game-canvas"
+      width="960"
+      height="540"
+      aria-label="Game area"
+    ></canvas>
+
+    <div id="hud" aria-live="polite">
+      <div class="hud-row">
+        <span>Steps/s</span><strong id="steps-value">0</strong>
+      </div>
+      <div class="hud-row">
+        <span>FPS</span><strong id="fps-value">0</strong>
+      </div>
+      <div class="hud-row">
+        <span>Frame Time</span><strong id="frame-time-value">0.00 ms</strong>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
