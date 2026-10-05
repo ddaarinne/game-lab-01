@@ -1,201 +1,116 @@
-# Game Lab 01 — Spaceflight simulation
+# Game Lab 02 — entities, prototypes, and this
 
-This project is a small vanilla JS arcade prototype built with Vite. The game loop uses a fixed 60 Hz simulation step with interpolation for rendering, and the ship moves inside a wrap-around arena.
+Це продовження гри в тому ж репозиторії: ортодоксальний fixed-step цикл вже служить як основа, а тепер ми переводимо рух і сутності на модель `Entity` + `World` + `Ship`.
 
-## What is implemented
+## Що реалізовано
 
-- Fixed-step game loop with `requestAnimationFrame`
-- Interpolated render pass
-- Clean physics function `integrate(ship, input, dt)`
-- Keyboard input captured by closure-based `createInput()`
-- HUD with `steps/s`, `frames/s`, and frame time
-- Canvas scaling for `devicePixelRatio`
-- Wrap-around arena edges
+- `Vector2` з чистими методами, без мутації вхідних аргументів;
+- базовий `Entity` з приватним `#id`, позицією, швидкістю, радіусом, `kind` і `update(dt)`;
+- `Ship extends Entity`, з приватним `#hp` і публічним `get hp()`;
+- `World` на основі `Map`, зі `spawn`, `despawn`, `ofKind`, `step` і sweep мертвих сутностей;
+- `Bullet` з `ttl`, ракетний/міні-гомінг через композицію, а не через глибокий класовий ланцюг;
+- `Asteroid` і `Pickup` як окремі сутності;
+- кругове зіткнення в окремій системі (`circleCollision`), без оптимізації;
+- вибухи з частинками, респаун корабля через 2 с, і HUD з HP і score;
+- просте управління стрільбою через клавішу `Space`.
 
-## Why the loop is stable
+## Архітектура сутностей
 
-The simulation updates at a constant rate:
+Наша модель навмисно тримає класову ієрархію дуже тонкою:
 
-- step = 1 / 60 = 0.016666... s
-- maximum simulation rate = 60 steps/s
-- rendering happens at the browser refresh rate, usually 60 FPS or 120 FPS
+- `Entity` — базова логіка позиції, швидкості й ID;
+- `Ship` — конкретний корабель і його поведінка в просторі;
+- `Bullet`, `Asteroid`, `Pickup`, `Particle` — інші сутності, які не успадковуються з корабля.
 
-The loop accumulates elapsed time and executes the simulation in a while loop while the accumulator is greater than or equal to the step:
+Така структура дозволяє уникнути “дерева класів, що розростається”, коли кожен новий тип зброї чи навігаційної фішки тягне за собою нові підкласи. Замість цього ми використовуємо композицію: боєприпас може мати `homing`-об’єкт, а pickup — окремий компонент-сутність без родинних зв’язків з кораблем.
+
+## This: баг і фікс
+
+Типова помилка в такій грі:
 
 ```js
-accumulator += delta;
-while (accumulator >= step) {
-  update(step);
-  accumulator -= step;
-}
-const alpha = accumulator / step;
-render(alpha, frameTime);
+window.addEventListener("keydown", ship.fire);
 ```
 
-This design prevents the physics from drifting when the monitor refresh rate changes.
+Тут `this` всередині `fire()` не вказує на екземпляр `ship`, бо метод передано як окрему функцію. У строгому режимі `this` стане `undefined`, а в нестрогому — `window`.
 
-## What `createLoop()` is doing
-
-The central idea is: the simulation should run in a fixed logical time, but the browser only tells us when a frame is about to be painted. That is why the loop uses an accumulator.
+Правильні варіанти:
 
 ```js
-export function createLoop({ update, render, step = 1 / 60 }) {
-  let accumulator = 0;
-  let previousFrameTime = 0;
-
-  function tick(timestamp) {
-    if (!previousFrameTime) {
-      previousFrameTime = timestamp;
-    }
-
-    const delta = Math.min((timestamp - previousFrameTime) / 1000, 0.25);
-    previousFrameTime = timestamp;
-
-    accumulator += delta;
-
-    while (accumulator >= step) {
-      update(step);
-      accumulator -= step;
-    }
-
-    const alpha = accumulator / step;
-    render(alpha, delta * 1000);
-
-    requestAnimationFrame(tick);
+window.addEventListener("keydown", (event) => {
+  if (event.code === "Space") {
+    ship.fire(world);
   }
-}
+});
 ```
 
-### Why `accumulator` matters
-
-`requestAnimationFrame` gives us a timestamp at each paint. The difference between the current timestamp and the previous one is the real elapsed time since the last frame.
-
-If the browser runs at 60Hz, then `delta` is roughly `0.0167` seconds. If it runs at 144Hz, it is smaller. In both cases, the simulation should still advance by a fixed step of `1/60` seconds, not by the monitor cadence.
-
-So we do this:
-
-- accumulate all time that passed since the last simulation step,
-- while there is enough accumulated time, run `update(step)`,
-- keep the remainder as a fractional time for interpolation.
-
-That is how the game stays deterministic and stable despite different displays.
-
-### Why interpolation is needed
-
-The render step runs between simulation steps. For example, if the physics update occurred at `t = 0.000` and the next one is at `t = 0.0167`, but the browser paints at `t = 0.012`, we need to draw the ship in a position between the previous and the next state.
-
-This is what the `alpha` value does:
+або:
 
 ```js
-const x = ship.prevX + (ship.x - ship.prevX) * alpha;
+const fireBound = ship.fire.bind(ship);
+window.addEventListener("keydown", fireBound);
 ```
 
-It is a linear interpolation between the last simulated state and the current one. The result is smoother motion and less jitter.
+В проекті використаний перший варіант, бо він явно показує, що виклик відбувається через конкретний екземпляр `ship` і не потребує додаткового біндингу.
 
-### Why not just `setInterval`?
+## Композиція замість глибокої ієрархії
 
-`setInterval` is a timer, not a rendering hook. The browser may delay timer callbacks, especially when the tab is not active or the machine is under load. The rendering loop and the simulation loop then drift apart.
+Якби ми спробували будувати ієрархію “`Entity -> Vehicle -> Ship -> Fighter -> HomingShip`” або “`Bullet -> NormalBullet -> HomingBullet -> GuidedBullet`”, то швидко отримаємо складний ланцюжок із дублюванням логіки. Це саме той випадок, де композиція краще:
 
-`requestAnimationFrame` is synced with the browser paint cycle, so simulation and screen updates stay naturally aligned. This is the standard approach for games and animation in the browser.
+- `Bullet` має властивість `homing` = `{ kind: "asteroid", range: 200, turnRate: 1.9 }`;
+- `Pickup` — окрема сутність з `kind = "pickup"`, яка просто стоїть і реагує на колізію;
+- при потребі можна додати інші “поведінки” без створення нових класів у дереві.
 
-## Three intentional breakages and measurements
+Тобто ми обираємо “рівень поведінки”, а не “пластові підкласи”.
 
-### 1) Blocking loop inside the frame
+## Принцип колізій
 
-Intentional setup:
+Колізія реалізована як круг-коло:
 
-- Add a heavy synchronous loop in the render frame before returning control to the browser
-- Example: `for (let i = 0; i < 50_000_000; i += 1) {}`
+```js
+const distanceSquared = dx * dx + dy * dy;
+const radiusSum = a.radius + b.radius;
+return distanceSquared <= radiusSum * radiusSum;
+```
 
-Measured effect:
+У `World.resolveCollisions()` ми проходимо по всіх сутностях в O(n²), що цілком прийнятно для цього лабораторного проекту. Важливо, що система окремо від фізики, і додає чітку логіку “коли два об’єкти стикаються, що відбувається”.
 
-- `frames/s` drops from ~60 to ~10–15
-- `steps/s` stays near 60 only if the loop is outside the simulation step bucket, but the browser cannot repaint until the blocking work ends
-- frame time rises from ~16.7 ms to 60–100+ ms
+## Контроль гри
 
-Why:
+- `W / ↑` — прискорення вперед;
+- `A / D` або `← / →` — поворот;
+- `S / ↓` — гальмування/рух назад;
+- `Space` — постріл;
+- збирайте `pickup`, влучайте в астероїди, не дозволяйте кораблю знищити ворожі об’єкти.
 
-The browser event loop is single-threaded. A long synchronous task blocks painting, input handling, and the next `requestAnimationFrame` callback. This is the classic “frame starvation” problem.
-
-### 2) `setInterval` instead of `requestAnimationFrame`
-
-Intentional setup:
-
-- Replace `rAF` with `setInterval(update, 1000 / 60)`
-
-Measured effect:
-
-- nominal simulation target: 60 steps/s
-- observed frames often drop to ~30–50 on variable-refresh screens
-- frames can become uneven, especially when the tab is in the background or when the browser throttles timers
-- visible stutter appears during tab switching or heavy work
-
-Why:
-
-`setInterval` runs on a timer queue, not on the browser’s render cycle. The browser may delay or batch timer callbacks. Meanwhile, visual paint still happens on the render loop. That mismatch creates desynchronization between simulation and display.
-
-### 3) Variable timestep instead of a fixed step
-
-Intentional setup:
-
-- Update physics using the raw frame delta directly: `ship.x += vx * delta`
-
-Measured effect:
-
-- On a 144 Hz monitor, delta is about 0.0069 s instead of 0.0167 s
-- physics runs at ~144 updates/s on fast machines, but at ~30 updates/s on slower machines
-- the ship may appear to accelerate or drift unpredictably
-- low FPS causes large `dt`, which amplifies position errors and makes bullet-like motion unstable
-
-Example numbers:
-
-- 60 Hz frame: `dt ≈ 0.0167 s`
-- 144 Hz frame: `dt ≈ 0.0069 s`
-- 30 FPS frame: `dt ≈ 0.0333 s`
-
-When a variable step is used, the simulation time is tied to CPU or display timing instead of a fixed logical clock. Over time, the movement becomes inconsistent and the game can feel “floaty” or overreactive.
-
-## Event loop summary
-
-The browser event loop is roughly:
-
-1. task queue callbacks
-2. microtasks
-3. paint / render
-4. idle time
-
-`requestAnimationFrame` aligns physics with paint, while a blocking task or timer mismatch breaks that harmony. Fixed-step simulation plus interpolation gives smooth rendering without unstable simulation.
-
-A useful mental model is this:
-
-- simulation time is logical time, independent from the monitor,
-- render time is visual time, tied to browser paint,
-- the accumulator bridges those two timelines.
-
-If we skip this bridge and just use raw frame time in physics, the game becomes dependent on frame rate. If we use a blocking busy loop, the browser cannot paint. If we use `setInterval`, the simulation is no longer tied to the actual browser render rhythm.
-
-## Local run
+## Локальний запуск
 
 ```bash
 npm install
 npm run dev -- --host 0.0.0.0
 ```
 
-Open the local Vite URL, usually:
+Потім відкрийте локальний Vite URL, зазвичай:
 
-- http://localhost:3000/
+- http://localhost:5173/
 
 ## Git tag
 
-The repository should be tagged as:
+Репозиторій має бути позначений тегом `lab-02`:
 
 ```bash
-git tag lab-01
+git tag lab-02
 ```
 
-To publish publicly, push the repository and the tag:
+І після публікації можна виконати:
 
 ```bash
-git remote add origin <your-public-github-url>
 git push origin main --tags
 ```
+
+## Коротко про Reflection
+
+- `this` залежить від того, як викликано функцію, а не від місця її оголошення.
+- `class` — це синтаксичний цукор над прототипним механізмом JavaScript, а не окрема “інша мова”.
+- `Map`/`Set` допомагають мати чисту модель сутностей і легко позначати “мертвих” об’єкти для sweep у кінці кроку.
+- композиція дає вільніше розширення, ніж глибока спадковість, особливо для логіки типу `homing` і `pickup`.
