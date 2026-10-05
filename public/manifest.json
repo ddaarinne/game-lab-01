@@ -1,0 +1,13 @@
+{
+  "images": [
+    { "name": "ship", "url": "/sprites/ship.svg" },
+    { "name": "asteroid", "url": "/sprites/asteroid.svg" },
+    { "name": "pickup", "url": "/sprites/pickup.svg" },
+    { "name": "bullet", "url": "/sprites/bullet.svg" }
+  ],
+  "audio": [
+    { "name": "fire", "url": "/audio/fired.wav" },
+    { "name": "hit", "url": "/audio/hit.wav" },
+    { "name": "explode", "url": "/audio/explode.wav" }
+  ]
+}

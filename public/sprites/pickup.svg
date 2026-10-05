@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="pickup sprite">
+  <g fill="#7affc8" stroke="#dffcf0" stroke-width="2">
+    <path d="M32 9 L47 23 L32 55 L17 23 Z"/>
+    <path d="M32 9 L32 55"/>
+    <path d="M17 23 L47 23"/>
+  </g>
+</svg>

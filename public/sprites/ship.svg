@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ship sprite">
+  <defs>
+    <linearGradient id="shipBody" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#dff9ff"/>
+      <stop offset="100%" stop-color="#7ce7ff"/>
+    </linearGradient>
+  </defs>
+  <polygon points="32,5 51,36 40,36 32,52 24,36 13,36" fill="url(#shipBody)" stroke="#eafcff" stroke-width="2"/>
+  <line x1="18" y1="30" x2="8" y2="30" stroke="#7affc8" stroke-width="2"/>
+</svg>

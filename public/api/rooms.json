@@ -1,0 +1,8 @@
+{
+  "rooms": [
+    { "id": "alpha", "label": "Alpha Sector", "status": "open" },
+    { "id": "beta", "label": "Beta Sector", "status": "open" },
+    { "id": "gamma", "label": "Gamma Sector", "status": "busy" },
+    { "id": "delta", "label": "Delta Sector", "status": "open" }
+  ]
+}
